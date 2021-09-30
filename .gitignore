@@ -132,3 +132,6 @@ dmypy.json
 *.fastq
 # Zipped fastq files
 *.fastq.gz
+
+# .DS_Store
+.DS_Store
