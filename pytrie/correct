@@ -1,0 +1,119 @@
+#! /usr/bin/python3 -u
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE,SIG_DFL)
+import sys
+from collections import defaultdict
+
+class TrieNode:
+	def __init__(self):
+		self.item = None
+		self.children = {}
+	
+	def add(self, word, item=None):
+		node = self
+		for letter in word:
+			if letter not in node.children: 
+				node.children[letter] = TrieNode()
+			node = node.children[letter]
+		if item:
+			node.item = item
+		else:
+			node.item=word
+	
+	def search(self, word, maxCost):
+		currentRow = range(len(word) + 1)
+		for letter in self.children:
+			yield from self.children[letter].searchRecursive(letter, word, currentRow, maxCost)
+	
+	def search_closest(self, word, maxCost):
+		closest_cost = maxCost + 1
+		closest_match = None
+		for (match, cost) in self.search(word, maxCost):
+			if cost < closest_cost:
+				closest_match = match
+				closest_cost = cost
+		if closest_match:
+			return (closest_match, closest_cost)
+		else:
+			return None
+	
+	def searchRecursive(self, letter, word, previousRow, maxCost):
+		columns = len( word ) + 1
+		currentRow = [ previousRow[0] + 1 ]
+		for column in range( 1, columns ):
+			insertCost = currentRow[column - 1] + 1
+			deleteCost = previousRow[column] + 1
+			if word[column - 1] != letter:
+				replaceCost = previousRow[ column - 1 ] + 1
+			else:				
+				replaceCost = previousRow[ column - 1 ]
+			currentRow.append( min( insertCost, deleteCost, replaceCost ) )
+		if currentRow[-1] <= maxCost and self.item != None:
+			yield (self.item, currentRow[-1])
+		if min(currentRow) <= maxCost:
+			for letter in self.children:
+				yield from	 self.children[letter].searchRecursive(letter, word, currentRow, maxCost )
+
+if len(sys.argv) != 2:
+	print("usage: {} guides.tsv".format(sys.argv[0]), file=sys.stderr)
+	print("Format of guides.tsv is:", file=sys.stderr)
+	print("	gRNA	mutation", file=sys.stderr)
+	exit(2)
+
+fIXset = {"": 0, "AGTGATT": 1, "ACATAAGC": 2, "CCTGGGAAA": 3, "TACCTCCCAG": 4, "ATTTGTGGTAT": 5, "CCCGAGAGATCG": 6}
+rIXset = {"CCGTAAA": 1, "GTAGTCGA": 2, "TGTAAGAAT": 3, "AGCTATGTGG": 4, "CTCCACGCAAG": 5, "GTCTTTGATTAG": 6}
+
+fIXs = TrieNode()
+for k,v in fIXset.items():
+	fIXs.add(k,v)
+
+rIXs = TrieNode()
+for k,v in rIXset.items():
+	rIXs.add(k,v)
+
+try:
+	foligos = open(sys.argv[1])
+except:
+	print("{}: Couldn't open oligos table".format(sys.argv[0]), file=sys.stderr)
+	exit(2)
+
+gRNAset = dict()
+gRNAs = TrieNode()
+for line in foligos:
+	guide, mut = line.strip().split('	')
+	gRNAset[guide] = mut
+
+for guide in gRNAset:
+	gRNAs.add(guide, gRNAset[guide])
+
+for line in sys.stdin:
+	ixf, ixr, guide, bc = line.rstrip().split('	')
+
+	if ixf in fIXset:
+		ixf = fIXset[ixf]
+	else:
+		xs = fIXs.search_closest(ixf, 3)
+		if not xs:	
+			print("ixf", line.strip(), sep="\t", file=sys.stderr)
+			continue
+		ixf = xs[0]
+
+	if ixr in rIXset:
+		ixr = rIXset[ixr]
+	else:
+		xs = rIXs.search_closest(ixr, 2)
+		if not xs:	
+			print("ixr", line.strip(), sep="\t", file=sys.stderr)
+			continue
+		ixr = xs[0]
+
+	if guide in gRNAset:
+		guide = gRNAset[guide]
+	else:
+		guides = gRNAs.search_closest(guide, 2)
+		if not guides:	
+			print("guide", line.strip(), sep="\t", file=sys.stderr)
+			continue
+		guide = guides[0]
+
+	print(ixf, ixr, guide, bc, sep="\t")
