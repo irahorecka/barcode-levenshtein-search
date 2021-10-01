@@ -16,7 +16,6 @@ class TrieNode:
                 self.children[letter] = TrieNode()
             # Traverse one node down.
             self = self.children[letter]
-
         self.word = word
 
 
@@ -31,16 +30,17 @@ def search(trie, word, max_cost=1):
     # Build first row of Levenshtein's distance matrix.
     current_row = range(len(word) + 1)
 
+    results = []
     # Recursively search each branch of the trie.
     for letter in trie.children:
-        results = search_recursive(trie.children[letter], letter, word, current_row, max_cost)
-        # If valid results are found, return results.
-        if results:
-            return results
+        search_recursive(trie.children[letter], letter, word, current_row, results, max_cost)
+    if results:
+        # Return shortest sequence found within score (sequence @ index 0, score @ index 1)
+        return sorted(results, key=lambda x: x[0], reverse=True).pop()[0]
     return None
 
 
-def search_recursive(node, letter, word, previous_row, max_cost):
+def search_recursive(node, letter, word, previous_row, results, max_cost):
     """Recursively search through nodes of a Trie object instance. Returns
     found word if the Levenshtein's distance of the last iem in the current
     query row is less than or equal to the maximum cost."""
@@ -50,23 +50,23 @@ def search_recursive(node, letter, word, previous_row, max_cost):
         `search_recursive`."""
         num_recurse += 1
         current_row = get_levenshtein_row(letter, word, previous_row)
-        if node.word is not None and current_row[-1] <= max_cost:
-            # Found a match.
-            return node.word
-
         # Recursively search each branch of the trie if any entries in the
         # row are less than the maximum cost.
         if min(current_row) <= max_cost:
             for letter in node.children:
-                return recurse(node.children[letter], letter, current_row, results, num_recurse)
+                output = recurse(node.children[letter], letter, current_row, results, num_recurse)
+                # Optimization for exiting as soon as output found
+                if not output:
+                    continue
+                return output
 
         # This is useful if the comparator sequence is longer than the reference sequences.
-        if current_row[num_recurse] <= max_cost:
-            return node.word
-        return None
+        if current_row[num_recurse] <= max_cost and node.word:
+            results.append((node.word, current_row[num_recurse]))
+        return results
 
     # `word` and `max_cost` remain constant - abstract away from inner recursive function.
-    return recurse(node, letter, previous_row, list())
+    return recurse(node, letter, previous_row, results)
 
 
 def get_levenshtein_row(letter, word, previous_row):

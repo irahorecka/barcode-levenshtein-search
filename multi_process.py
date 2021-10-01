@@ -22,7 +22,7 @@ def search_fastq_barcodes(ref_trie, fastq_seqs):
         ref_seqs ([trie.TrieNode]): [A TrieNode object populated with reference sequences]
     """
     # Ignoring the U1 seq - search up to 1_000_000 sequences
-    fastq_seqs = [seq[22:] for idx, seq in enumerate(fastq_seqs) if idx < 2000000]
+    fastq_seqs = [seq[22:] for idx, seq in enumerate(fastq_seqs) if idx < 1000]
     # Make iterables equal in length for mapping to concurrent dispatcher.
     ref_tries = make_iterable(ref_trie, fastq_seqs)
     # We are using a max cost value of 2.
