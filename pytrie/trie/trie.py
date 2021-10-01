@@ -52,7 +52,7 @@ def search_recursive(node, letter, word, previous_row, max_cost):
         current_row = get_levenshtein_row(letter, word, previous_row)
         if node.word is not None and current_row[-1] <= max_cost:
             # Found a match.
-            return tuple((word, node.word, current_row[-1]))
+            return node.word
 
         # Recursively search each branch of the trie if any entries in the
         # row are less than the maximum cost.
@@ -62,7 +62,7 @@ def search_recursive(node, letter, word, previous_row, max_cost):
 
         # This is useful if the comparator sequence is longer than the reference sequences.
         if current_row[num_recurse] <= max_cost:
-            return tuple((word, node.word, current_row[num_recurse]))
+            return node.word
         return None
 
     # `word` and `max_cost` remain constant - abstract away from inner recursive function.
