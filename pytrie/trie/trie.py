@@ -45,9 +45,10 @@ def search_recursive(node, letter, word, previous_row, max_cost):
     found word if the Levenshtein's distance of the last iem in the current
     query row is less than or equal to the maximum cost."""
 
-    def recurse(node, letter, previous_row, results):
+    def recurse(node, letter, previous_row, results, num_recurse=0):
         """Inner recursive function. Abstracts away constants passed to
         `search_recursive`."""
+        num_recurse += 1
         current_row = get_levenshtein_row(letter, word, previous_row)
         if node.word is not None and current_row[-1] <= max_cost:
             # Found a match.
@@ -57,7 +58,11 @@ def search_recursive(node, letter, word, previous_row, max_cost):
         # row are less than the maximum cost.
         if min(current_row) <= max_cost:
             for letter in node.children:
-                return recurse(node.children[letter], letter, current_row, results)
+                return recurse(node.children[letter], letter, current_row, results, num_recurse)
+
+        # This is useful if the comparator sequence is longer than the reference sequences.
+        if current_row[num_recurse] <= max_cost:
+            return tuple((word, node.word, current_row[num_recurse]))
         return None
 
     # `word` and `max_cost` remain constant - abstract away from inner recursive function.
